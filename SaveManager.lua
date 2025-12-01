@@ -230,7 +230,11 @@ local SaveManager = {} do
             return false, "failed to encode data"
         end
 
-        writefile(fullPath, encoded)
+        local writeSuccess, writeErr = pcall(writefile, fullPath, encoded)
+        if not writeSuccess then
+            return false, "write file error: " .. tostring(writeErr)
+        end
+
         return true
     end
 
