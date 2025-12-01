@@ -46,6 +46,7 @@ do
 
     ThemeManager.Library = nil
     ThemeManager.AppliedToTab = false
+    ThemeManager.DefaultTheme = "Gradient Dark Purple"
     ThemeManager.BuiltInThemes = {
         ["Default"] = {
             1,
@@ -118,7 +119,11 @@ do
         ["Material"] = {
             18,
             { FontColor = "eeffff", MainColor = "212121", AccentColor = "82aaff", BackgroundColor = "151515", OutlineColor = "424242" },
-        }
+        },
+        ["Gradient Dark Purple"] = {
+            19,
+            { FontColor = "ffffff", MainColor = "191919", AccentColor = "2c104c", BackgroundColor = "0f0f0f", OutlineColor = "282828" },
+        },
     }
 
     function ThemeManager:SetLibrary(library)

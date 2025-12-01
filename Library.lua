@@ -192,7 +192,7 @@ local Library = {
     Scheme = {
         BackgroundColor = Color3.fromRGB(15, 15, 15),
         MainColor = Color3.fromRGB(25, 25, 25),
-        AccentColor = Color3.fromRGB(125, 85, 255),
+        AccentColor = Color3.fromRGB(44, 16, 76),
         OutlineColor = Color3.fromRGB(40, 40, 40),
         FontColor = Color3.new(1, 1, 1),
         Font = Font.fromEnum(Enum.Font.Code),
@@ -1021,6 +1021,62 @@ function Library:UpdateColorsUsingRegistry()
                 Instance[Property] = ColorIdx()
             end
         end
+    end
+end
+
+function Library:GetAccentGradientSequence(): ColorSequence
+    local DarkColor = Library.Scheme.Dark or Color3.new(0, 0, 0)
+    local Accent = Library.Scheme.AccentColor
+
+    return ColorSequence.new(
+        ColorSequenceKeypoint.new(0, DarkColor),
+        ColorSequenceKeypoint.new(1, Accent)
+    )
+end
+
+function Library:AttachDynamicGradient(Frame: GuiObject, Name: string?, SequenceProvider: (() -> ColorSequence)?, Rotation: number?)
+    if not Frame then
+        return nil
+    end
+
+    Name = Name or "ObsidianGradient"
+
+    local Gradient = Frame:FindFirstChild(Name)
+    if not Gradient or not Gradient:IsA("UIGradient") then
+        Gradient = New("UIGradient", {
+            Name = Name,
+            Rotation = Rotation or 0,
+            Parent = Frame,
+        })
+    elseif Rotation ~= nil then
+        Gradient.Rotation = Rotation
+    end
+
+    local Provider = SequenceProvider or function()
+        return Library:GetAccentGradientSequence()
+    end
+
+    if not Library.Registry[Gradient] then
+        Library:AddToRegistry(Gradient, {})
+    end
+
+    Library.Registry[Gradient].Color = Provider
+    Gradient.Color = Provider()
+
+    return Gradient
+end
+
+function Library:DetachDynamicGradient(Frame: GuiObject, Name: string?)
+    if not Frame then
+        return
+    end
+
+    Name = Name or "ObsidianGradient"
+
+    local Gradient = Frame:FindFirstChild(Name)
+    if Gradient and Gradient:IsA("UIGradient") then
+        Library:RemoveFromRegistry(Gradient)
+        Gradient:Destroy()
     end
 end
 
@@ -3819,6 +3875,31 @@ do
             Parent = Ball,
         })
 
+        local function GetToggleGradientSequence()
+            if Toggle.Disabled then
+                local Main = Library.Scheme.MainColor
+                return ColorSequence.new(
+                    ColorSequenceKeypoint.new(0, Main),
+                    ColorSequenceKeypoint.new(1, Main)
+                )
+            end
+
+            if Toggle.Value then
+                return Library:GetAccentGradientSequence()
+            end
+
+            local Base = Library.Scheme.MainColor
+            local Lighter = GetLighterColor(Base)
+
+            return ColorSequence.new(
+                ColorSequenceKeypoint.new(0, Base),
+                ColorSequenceKeypoint.new(1, Lighter)
+            )
+        end
+
+        Toggle.Gradient = Library:AttachDynamicGradient(Switch, "ObsidianToggleGradient", GetToggleGradientSequence, 0)
+        Toggle.GradientProvider = GetToggleGradientSequence
+
         function Toggle:UpdateColors()
             Toggle:Display()
         end
@@ -3826,6 +3907,10 @@ do
         function Toggle:Display()
             if Library.Unloaded then
                 return
+            end
+
+            if Toggle.Gradient and Toggle.GradientProvider then
+                Toggle.Gradient.Color = Toggle.GradientProvider()
             end
 
             local Offset = Toggle.Value and 1 or 0
@@ -4201,6 +4286,21 @@ do
             },
         })
 
+        local function GetSliderGradientSequence()
+            if Slider.Disabled then
+                local Outline = Library.Scheme.OutlineColor
+                return ColorSequence.new(
+                    ColorSequenceKeypoint.new(0, Outline),
+                    ColorSequenceKeypoint.new(1, Outline)
+                )
+            end
+
+            return Library:GetAccentGradientSequence()
+        end
+
+        Slider.Gradient = Library:AttachDynamicGradient(Fill, "ObsidianSliderGradient", GetSliderGradientSequence, 0)
+        Slider.GradientProvider = GetSliderGradientSequence
+
         function Slider:UpdateColors()
             if Library.Unloaded then
                 return
@@ -4213,6 +4313,10 @@ do
 
             Fill.BackgroundColor3 = Slider.Disabled and Library.Scheme.OutlineColor or Library.Scheme.AccentColor
             Library.Registry[Fill].BackgroundColor3 = Slider.Disabled and "OutlineColor" or "AccentColor"
+            
+            if Slider.Gradient and Slider.GradientProvider then
+                Slider.Gradient.Color = Slider.GradientProvider()
+            end
         end
 
         function Slider:Display()
@@ -5883,6 +5987,8 @@ function Library:Notify(...)
         Size = UDim2.fromScale(1, 1),
         Parent = TimerBar,
     })
+
+    Library:AttachDynamicGradient(TimerFill, "ObsidianTimerGradient", nil, 0)
 
     if typeof(Data.Time) == "Instance" then
         TimerFill.Size = UDim2.fromScale(0, 1)
