@@ -1004,6 +1004,8 @@ function Library:UpdateSearch(SearchText)
     end
 end
 
+local New
+
 function Library:AddToRegistry(Instance, Properties)
     Library.Registry[Instance] = Properties
 end
@@ -1025,13 +1027,28 @@ function Library:UpdateColorsUsingRegistry()
 end
 
 function Library:GetAccentGradientSequence(): ColorSequence
-    local DarkColor = Library.Scheme.Dark or Color3.new(0, 0, 0)
-    local Accent = Library.Scheme.AccentColor
+    local Accent = Library.Scheme.AccentColor or Color3.fromRGB(125, 85, 255)
+
+    local H, S, V = Accent:ToHSV()
+    local Darker = Color3.fromHSV(H, S, math.clamp(V * 0.6, 0, 1))
+    local Lighter = Color3.fromHSV(H, math.clamp(S * 0.9, 0, 1), math.clamp(V * 1.2, 0, 1))
 
     return ColorSequence.new(
-        ColorSequenceKeypoint.new(0, DarkColor),
+        ColorSequenceKeypoint.new(0, Darker),
+        ColorSequenceKeypoint.new(0.35, Accent),
+        ColorSequenceKeypoint.new(0.7, Lighter),
         ColorSequenceKeypoint.new(1, Accent)
     )
+end
+
+function Library:GetIconAccentColor(): Color3
+    local Accent = Library.Scheme.AccentColor or Color3.fromRGB(125, 85, 255)
+    local H, S, V = Accent:ToHSV()
+
+    local AdjustedS = math.clamp(S * 0.85, 0, 1)
+    local AdjustedV = math.clamp(V * 1.3, 0, 1)
+
+    return Color3.fromHSV(H, AdjustedS, AdjustedV)
 end
 
 function Library:AttachDynamicGradient(Frame: GuiObject, Name: string?, SequenceProvider: (() -> ColorSequence)?, Rotation: number?)
@@ -1257,7 +1274,7 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
     end
 end
 
-local function New(ClassName: string, Properties: { [string]: any }): any
+function New(ClassName: string, Properties: { [string]: any }): any
     local Instance = Instance.new(ClassName)
 
     if Templates[ClassName] then
@@ -6843,7 +6860,13 @@ function Library:CreateWindow(WindowInfo)
             if Icon then
                 TabIcon = New("ImageLabel", {
                     Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
+                    ImageColor3 = function()
+                        if Icon.Custom then
+                            return Library.Scheme.White
+                        end
+
+                        return Library:GetIconAccentColor()
+                    end,
                     ImageRectOffset = Icon.ImageRectOffset,
                     ImageRectSize = Icon.ImageRectSize,
                     ImageTransparency = 0.5,
@@ -7182,7 +7205,13 @@ function Library:CreateWindow(WindowInfo)
                 if BoxIcon then
                     New("ImageLabel", {
                         Image = BoxIcon.Url,
-                        ImageColor3 = BoxIcon.Custom and "White" or "AccentColor",
+                        ImageColor3 = function()
+                            if BoxIcon.Custom then
+                                return Library.Scheme.White
+                            end
+
+                            return Library:GetIconAccentColor()
+                        end,
                         ImageRectOffset = BoxIcon.ImageRectOffset,
                         ImageRectSize = BoxIcon.ImageRectSize,
                         Position = UDim2.fromOffset(6, 6),
@@ -7568,7 +7597,13 @@ function Library:CreateWindow(WindowInfo)
             if Icon then
                 TabIcon = New("ImageLabel", {
                     Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
+                    ImageColor3 = function()
+                        if Icon.Custom then
+                            return Library.Scheme.White
+                        end
+
+                        return Library:GetIconAccentColor()
+                    end,
                     ImageRectOffset = Icon.ImageRectOffset,
                     ImageRectSize = Icon.ImageRectSize,
                     ImageTransparency = 0.5,
