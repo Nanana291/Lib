@@ -208,6 +208,14 @@ do
             end
         end
 
+        local background = self.Library.Scheme.BackgroundColor
+        if typeof(background) == "Color3" then
+            local h, s, v = background:ToHSV()
+
+            self.Library.Scheme.Dark = Color3.fromHSV(h, s, math.clamp(v * 0.5, 0, 1))
+            self.Library.IsLightTheme = v > 0.6
+        end
+
         self.Library:UpdateColorsUsingRegistry()
     end
 
