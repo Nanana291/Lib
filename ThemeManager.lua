@@ -194,7 +194,6 @@ do
             else
                 -- Support gradient tables for modern themes
                 if typeof(val) == "table" then
-                    -- If it's a gradient-like table serialize/colorize into Color3s for runtime
                     if val.__ObsidianGradient then
                         local grad = { __ObsidianGradient = true, Colors = {}, Rotation = val.Rotation or 0 }
                         for i, c in ipairs(val.Colors or {}) do
@@ -210,7 +209,9 @@ do
                             end
                         end
 
-                        self.Library.Scheme[idx] = grad
+                        -- store gradient separately and set scheme to first color for compatibility
+                        self.Library.Gradients[idx] = grad
+                        self.Library.Scheme[idx] = grad.Colors[1] or self.Library.Scheme[idx]
                     else
                         -- generic table: try to use first color if present
                         local ok, first = pcall(function()
@@ -357,12 +358,10 @@ do
 
         local theme = {}
         for _, field in ThemeFields do
-            local val = self.Library.Scheme[field]
-
-            if type(val) == "table" and val.__ObsidianGradient then
-                -- serialize gradient: store hex strings for colors
+            local grad = self.Library.Gradients[field]
+            if grad and grad.__ObsidianGradient then
                 local cols = {}
-                for _, c in ipairs(val.Colors or {}) do
+                for _, c in ipairs(grad.Colors or {}) do
                     if typeof(c) == "Color3" then
                         table.insert(cols, "#" .. c:ToHex())
                     elseif type(c) == "string" then
@@ -370,19 +369,21 @@ do
                     end
                 end
 
-                theme[field] = { __ObsidianGradient = true, Colors = cols, Rotation = val.Rotation or 0 }
-            elseif typeof(val) == "Color3" then
-                theme[field] = "#" .. val:ToHex()
-            elseif type(val) == "string" then
-                theme[field] = val
+                theme[field] = { __ObsidianGradient = true, Colors = cols, Rotation = grad.Rotation or 0 }
             else
-                -- fallback to options value if present
-                if self.Library.Options[field] and self.Library.Options[field].Value then
-                    local ok, hex = pcall(function()
-                        return "#" .. self.Library.Options[field].Value:ToHex()
-                    end)
-                    if ok then
-                        theme[field] = hex
+                local val = self.Library.Scheme[field]
+                if typeof(val) == "Color3" then
+                    theme[field] = "#" .. val:ToHex()
+                elseif type(val) == "string" then
+                    theme[field] = val
+                else
+                    if self.Library.Options[field] and self.Library.Options[field].Value then
+                        local ok, hex = pcall(function()
+                            return "#" .. self.Library.Options[field].Value:ToHex()
+                        end)
+                        if ok then
+                            theme[field] = hex
+                        end
                     end
                 end
             end
@@ -446,10 +447,13 @@ do
         local bgDefault = self.Library.Scheme.BackgroundColor
         local mainDefault = self.Library.Scheme.MainColor
         local accentDefault = self.Library.Scheme.AccentColor
+        local accentGrad = self.Library.Gradients and self.Library.Gradients["AccentColor"]
         local outlineDefault = self.Library.Scheme.OutlineColor
         local fontDefault = self.Library.Scheme.FontColor
 
-        if type(accentDefault) == "table" and accentDefault.__ObsidianGradient then
+        if accentGrad and accentGrad.__ObsidianGradient then
+            accentDefault = accentGrad.Colors and accentGrad.Colors[1] or Color3.fromHex("7d55ff")
+        elseif type(accentDefault) == "table" and accentDefault.__ObsidianGradient then
             accentDefault = accentDefault.Colors and accentDefault.Colors[1] or Color3.fromHex("7d55ff")
         end
 
