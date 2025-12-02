@@ -43,6 +43,9 @@ local SaveManager = {} do
     SaveManager.SubFolder = ""
     SaveManager.Ignore = {}
     SaveManager.Library = nil
+    SaveManager.LastSaveTime = 0
+    SaveManager.SaveDebounceDelay = 0.5 -- Debounce delay in seconds
+    SaveManager.PendingSave = nil
     SaveManager.Parser = {
         Toggle = {
             Save = function(idx, object)
@@ -118,6 +121,7 @@ local SaveManager = {} do
         self:SetIgnoreIndexes({
             "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor", "FontFace", -- themes
             "ThemeManager_ThemeList", "ThemeManager_CustomThemeList", "ThemeManager_CustomThemeName", -- themes
+            "GradientStart", "GradientEnd", "UseGradients", -- gradient theme support
         })
     end
 
@@ -194,6 +198,18 @@ local SaveManager = {} do
     end
 
     --// Save, Load, Delete, Refresh \\--
+    -- Debounced save function to prevent excessive writes
+    function SaveManager:DebouncedSave(name)
+        if self.PendingSave then
+            task.cancel(self.PendingSave)
+        end
+
+        self.PendingSave = task.delay(self.SaveDebounceDelay, function()
+            self:Save(name)
+            self.PendingSave = nil
+        end)
+    end
+
     function SaveManager:Save(name)
         if (not name) then
             return false, "no config file is selected"
@@ -249,6 +265,12 @@ local SaveManager = {} do
 
         local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(file))
         if not success then return false, "decode error" end
+
+        -- Validate and migrate old configs if needed
+        if decoded.version == nil and decoded.objects then
+            -- Old config format detected - could add migration logic here if needed
+            -- For now, just load normally
+        end
 
         for _, option in pairs(decoded.objects) do
             if not option.type then continue end
