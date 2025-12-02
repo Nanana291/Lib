@@ -1106,6 +1106,33 @@ function Library:ApplyGradientToElement(Element, Rotation)
     end
 end
 
+-- Applies gradient to text elements (TextLabel, TextButton) for modern look
+function Library:ApplyGradientToText(TextElement, Rotation)
+    -- For text elements, we apply gradient to TextColor3 using UIGradient
+    local existingGradient = TextElement:FindFirstChildOfClass("UIGradient")
+
+    if existingGradient then
+        existingGradient.Rotation = Rotation or existingGradient.Rotation
+        self:UpdateGradientColors(existingGradient)
+        Library.GradientRegistry[existingGradient] = true
+        return existingGradient
+    else
+        local gradient = Instance.new("UIGradient")
+        gradient.Rotation = Rotation or 0
+        gradient.Parent = TextElement
+        self:UpdateGradientColors(gradient)
+        Library.GradientRegistry[gradient] = true
+        gradient.Enabled = Library.Scheme.UseGradients
+        return gradient
+    end
+end
+
+-- Applies gradient to ImageLabels/ImageButtons for icon coloring
+function Library:ApplyGradientToIcon(IconElement, Rotation)
+    -- Icons use ImageColor3, so gradient applies to image tint
+    return self:ApplyGradientToElement(IconElement, Rotation or 45) -- 45° for diagonal gradient on icons
+end
+
 function Library:UpdateDPI(Instance, Properties)
     if not Library.DPIRegistry[Instance] then
         return
@@ -3901,8 +3928,11 @@ do
             Parent = Ball,
         })
 
-        -- Apply gradient to Switch (horizontal gradient for toggle switch)
+        -- Apply gradient to Switch (horizontal gradient for toggle switch background)
         local SwitchGradient = Library:ApplyGradientToElement(Switch, 0)
+
+        -- Apply gradient to Ball (circular gradient for toggle knob) - subtle gradient
+        local BallGradient = Library:ApplyGradientToElement(Ball, 135)
 
         function Toggle:UpdateColors()
             Toggle:Display()
@@ -6388,6 +6418,9 @@ function Library:CreateWindow(WindowInfo)
             WindowTitle.Size = UDim2.new(0, 0, 1, 0)
         end
 
+        -- Apply gradient to window title (horizontal gradient for modern look)
+        Library:ApplyGradientToText(WindowTitle, 0)
+
         LayoutRefs.WindowTitle = WindowTitle
 
         --// Top Right Bar
@@ -6822,6 +6855,9 @@ function Library:CreateWindow(WindowInfo)
             })
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
+            -- Apply gradient to tab label (horizontal gradient)
+            Library:ApplyGradientToText(TabLabel, 0)
+
             if Icon then
                 TabIcon = New("ImageLabel", {
                     Image = Icon.Url,
@@ -6833,6 +6869,11 @@ function Library:CreateWindow(WindowInfo)
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
                 })
+
+                -- Apply gradient to tab icon (diagonal gradient for icons)
+                if not Icon.Custom then -- Only apply gradient if using AccentColor
+                    Library:ApplyGradientToIcon(TabIcon, 45)
+                end
             end
 
             --// Tab Container \\--
@@ -7161,8 +7202,9 @@ function Library:CreateWindow(WindowInfo)
                 })
 
                 local BoxIcon = Library:GetCustomIcon(Info.IconName)
+                local BoxIconElement
                 if BoxIcon then
-                    New("ImageLabel", {
+                    BoxIconElement = New("ImageLabel", {
                         Image = BoxIcon.Url,
                         ImageColor3 = BoxIcon.Custom and "White" or "AccentColor",
                         ImageRectOffset = BoxIcon.ImageRectOffset,
@@ -7171,6 +7213,11 @@ function Library:CreateWindow(WindowInfo)
                         Size = UDim2.fromOffset(22, 22),
                         Parent = GroupboxHolder,
                     })
+
+                    -- Apply gradient to groupbox icon (diagonal gradient for icons)
+                    if not BoxIcon.Custom then -- Only apply gradient if using AccentColor
+                        Library:ApplyGradientToIcon(BoxIconElement, 45)
+                    end
                 end
 
                 GroupboxLabel = New("TextLabel", {
@@ -7187,6 +7234,9 @@ function Library:CreateWindow(WindowInfo)
                     PaddingRight = UDim.new(0, 12),
                     Parent = GroupboxLabel,
                 })
+
+                -- Apply gradient to groupbox title (horizontal gradient)
+                Library:ApplyGradientToText(GroupboxLabel, 0)
 
                 GroupboxContainer = New("Frame", {
                     BackgroundTransparency = 1,
@@ -7301,6 +7351,9 @@ function Library:CreateWindow(WindowInfo)
                     TextTransparency = 0.5,
                     Parent = TabboxButtons,
                 })
+
+                -- Apply gradient to tabbox button text (horizontal gradient)
+                Library:ApplyGradientToText(Button, 0)
 
                 local Line = Library:MakeLine(Button, {
                     AnchorPoint = Vector2.new(0, 1),
@@ -7547,6 +7600,9 @@ function Library:CreateWindow(WindowInfo)
             })
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
+            -- Apply gradient to tab label (horizontal gradient)
+            Library:ApplyGradientToText(TabLabel, 0)
+
             if Icon then
                 TabIcon = New("ImageLabel", {
                     Image = Icon.Url,
@@ -7558,6 +7614,11 @@ function Library:CreateWindow(WindowInfo)
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
                 })
+
+                -- Apply gradient to tab icon (diagonal gradient for icons)
+                if not Icon.Custom then -- Only apply gradient if using AccentColor
+                    Library:ApplyGradientToIcon(TabIcon, 45)
+                end
             end
 
             --// Tab Container \\--
