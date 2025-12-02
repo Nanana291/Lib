@@ -202,6 +202,8 @@ local Library = {
         White = Color3.new(1, 1, 1),
     },
 
+    Gradients = {},
+
     Registry = {},
     DPIRegistry = {},
     
@@ -1086,9 +1088,21 @@ function Library:UpdateColorsUsingRegistry()
     for Instance, Properties in pairs(Library.Registry) do
         for Property, ColorIdx in pairs(Properties) do
             if typeof(ColorIdx) == "string" then
-                Instance[Property] = Library.Scheme[ColorIdx]
+                local grad = Library.Gradients[ColorIdx]
+                if grad and grad.__ObsidianGradient then
+                    ApplyGradientToInstance(Instance, Property, grad)
+                else
+                    Instance[Property] = Library.Scheme[ColorIdx]
+                end
             elseif typeof(ColorIdx) == "function" then
-                Instance[Property] = ColorIdx()
+                local ok, val = pcall(ColorIdx)
+                if ok then
+                    if typeof(val) == "table" and val.__ObsidianGradient then
+                        ApplyGradientToInstance(Instance, Property, val)
+                    else
+                        Instance[Property] = val
+                    end
+                end
             end
         end
     end
@@ -1245,23 +1259,23 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
             -- Theme-backed properties (colors, etc). Support gradients via a special table.
             ThemeProperties[k] = v
 
-            local themeVal = Library.Scheme[v]
-            if typeof(themeVal) ~= "table" then
-                -- either a Color3 or a function result
-                Instance[k] = themeVal or v()
+            -- prefer stored gradients to keep backward compatibility with code that expects Color3 in Library.Scheme
+            local grad = Library.Gradients[v]
+            if grad and grad.__ObsidianGradient then
+                ApplyGradientToInstance(Instance, k, grad)
             else
-                -- if it's an Obsidian gradient, apply via UIGradient helper
-                if themeVal.__ObsidianGradient then
-                    ApplyGradientToInstance(Instance, k, themeVal)
+                local themeVal = Library.Scheme[v]
+                if typeof(themeVal) ~= "table" then
+                    -- either a Color3 or a function result
+                    Instance[k] = themeVal or v()
                 else
-                    -- fallback: try to use the table directly if it provides a Color3-like value
+                    -- fallback: table present in scheme (legacy); try to use first color or call
                     local ok, first = pcall(function()
                         return themeVal[1]
                     end)
                     if ok and typeof(first) == "Color3" then
                         Instance[k] = first
                     else
-                        -- last resort: call value if function
                         Instance[k] = v()
                     end
                 end
@@ -6827,15 +6841,25 @@ function Library:CreateWindow(WindowInfo)
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
             if Icon then
-                TabIcon = New("ImageLabel", {
-                    Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
-                    ImageRectOffset = Icon.ImageRectOffset,
-                    ImageRectSize = Icon.ImageRectSize,
-                    ImageTransparency = 0.5,
+                local IconHolder = New("Frame", {
+                    BackgroundColor3 = "AccentColor",
                     Size = UDim2.fromScale(1, 1),
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
+                })
+                New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = IconHolder })
+
+                TabIcon = New("ImageLabel", {
+                    Image = Icon.Url,
+                    BackgroundTransparency = 1,
+                    ImageColor3 = "White",
+                    ImageRectOffset = Icon.ImageRectOffset,
+                    ImageRectSize = Icon.ImageRectSize,
+                    ImageTransparency = 0,
+                    Size = UDim2.fromScale(0.7, 0.7),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Parent = IconHolder,
                 })
             end
 
@@ -7166,14 +7190,24 @@ function Library:CreateWindow(WindowInfo)
 
                 local BoxIcon = Library:GetCustomIcon(Info.IconName)
                 if BoxIcon then
-                    New("ImageLabel", {
-                        Image = BoxIcon.Url,
-                        ImageColor3 = BoxIcon.Custom and "White" or "AccentColor",
-                        ImageRectOffset = BoxIcon.ImageRectOffset,
-                        ImageRectSize = BoxIcon.ImageRectSize,
+                    local BoxIconHolder = New("Frame", {
+                        BackgroundColor3 = "AccentColor",
                         Position = UDim2.fromOffset(6, 6),
                         Size = UDim2.fromOffset(22, 22),
                         Parent = GroupboxHolder,
+                    })
+                    New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = BoxIconHolder })
+
+                    New("ImageLabel", {
+                        Image = BoxIcon.Url,
+                        BackgroundTransparency = 1,
+                        ImageColor3 = "White",
+                        ImageRectOffset = BoxIcon.ImageRectOffset,
+                        ImageRectSize = BoxIcon.ImageRectSize,
+                        Size = UDim2.fromScale(0.7, 0.7),
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Position = UDim2.fromScale(0.5, 0.5),
+                        Parent = BoxIconHolder,
                     })
                 end
 
@@ -7552,15 +7586,25 @@ function Library:CreateWindow(WindowInfo)
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
             if Icon then
-                TabIcon = New("ImageLabel", {
-                    Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
-                    ImageRectOffset = Icon.ImageRectOffset,
-                    ImageRectSize = Icon.ImageRectSize,
-                    ImageTransparency = 0.5,
+                local IconHolder = New("Frame", {
+                    BackgroundColor3 = "AccentColor",
                     Size = UDim2.fromScale(1, 1),
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
+                })
+                New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = IconHolder })
+
+                TabIcon = New("ImageLabel", {
+                    Image = Icon.Url,
+                    BackgroundTransparency = 1,
+                    ImageColor3 = "White",
+                    ImageRectOffset = Icon.ImageRectOffset,
+                    ImageRectSize = Icon.ImageRectSize,
+                    ImageTransparency = 0,
+                    Size = UDim2.fromScale(0.7, 0.7),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Parent = IconHolder,
                 })
             end
 
