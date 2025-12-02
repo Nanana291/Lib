@@ -51,6 +51,19 @@ do
             1,
             { FontColor = "ffffff", MainColor = "191919", AccentColor = "7d55ff", BackgroundColor = "0f0f0f", OutlineColor = "282828" },
         },
+        ["GradientDarkPurple"] = {
+            0, -- Priority 0 to make it first/default
+            {
+                FontColor = "ffffff",
+                MainColor = "191919",
+                AccentColor = "7d55ff",
+                BackgroundColor = "0f0f0f",
+                OutlineColor = "282828",
+                UseGradients = "true", -- Enable gradients for this theme
+                GradientStart = "000000", -- Black
+                GradientEnd = "4B0082" -- Indigo/Dark Purple
+            },
+        },
         ["BBot"] = {
             2,
             { FontColor = "ffffff", MainColor = "1e1e1e", AccentColor = "7e48a3", BackgroundColor = "232323", OutlineColor = "141414" },
@@ -184,6 +197,12 @@ do
                 if self.Library.Options[idx] then
                     self.Library.Options[idx]:SetValue(val)
                 end
+            elseif idx == "UseGradients" then
+                -- Handle UseGradients as boolean
+                self.Library.Scheme[idx] = (val == "true" or val == true)
+            elseif idx == "GradientStart" or idx == "GradientEnd" then
+                -- Handle gradient colors
+                self.Library.Scheme[idx] = Color3.fromHex(val)
             else
                 self.Library.Scheme[idx] = Color3.fromHex(val)
 
@@ -224,7 +243,7 @@ do
     end
 
     function ThemeManager:LoadDefault()
-        local theme = "Default"
+        local theme = "GradientDarkPurple" -- Default to GradientDarkPurple theme
         local content = isfile(self.Folder .. "/themes/default.txt") and readfile(self.Folder .. "/themes/default.txt")
 
         local isDefault = true
@@ -237,6 +256,9 @@ do
             end
         elseif self.BuiltInThemes[self.DefaultTheme] then
             theme = self.DefaultTheme
+        elseif not self.BuiltInThemes[theme] then
+            -- Fallback to Default if GradientDarkPurple doesn't exist (shouldn't happen)
+            theme = "Default"
         end
 
         if isDefault then
@@ -305,6 +327,15 @@ do
             theme[field] = self.Library.Options[field].Value:ToHex()
         end
         theme["FontFace"] = self.Library.Options["FontFace"].Value
+
+        -- Save gradient settings if enabled
+        if self.Library.Scheme.UseGradients then
+            theme["UseGradients"] = "true"
+            theme["GradientStart"] = self.Library.Scheme.GradientStart:ToHex()
+            theme["GradientEnd"] = self.Library.Scheme.GradientEnd:ToHex()
+        else
+            theme["UseGradients"] = "false"
+        end
 
         writefile(self.Folder .. "/themes/" .. file .. ".json", HttpService:JSONEncode(theme))
     end

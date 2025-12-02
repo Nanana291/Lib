@@ -200,10 +200,16 @@ local Library = {
         Red = Color3.fromRGB(255, 50, 50),
         Dark = Color3.new(0, 0, 0),
         White = Color3.new(1, 1, 1),
+
+        -- Gradient support (for GradientDarkPurple theme and similar)
+        UseGradients = false,
+        GradientStart = Color3.new(0, 0, 0), -- Black
+        GradientEnd = Color3.fromRGB(75, 0, 130), -- Indigo/Dark Purple (#4B0082)
     },
 
     Registry = {},
     DPIRegistry = {},
+    GradientRegistry = {}, -- Track elements with gradients for theme switching
     
     ImageManager = CustomImageManager,
 }
@@ -1021,6 +1027,82 @@ function Library:UpdateColorsUsingRegistry()
                 Instance[Property] = ColorIdx()
             end
         end
+    end
+
+    -- Update gradient colors for all registered gradient elements
+    self:UpdateGradients()
+end
+
+--// Gradient System Functions \\--
+-- Creates a static gradient for UI elements (non-animated, vertical or horizontal)
+function Library:CreateGradient(Parent, Rotation)
+    Rotation = Rotation or 90 -- Default to vertical (90 degrees)
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Rotation = Rotation
+    gradient.Parent = Parent
+
+    -- Set initial colors based on current scheme
+    self:UpdateGradientColors(gradient)
+
+    return gradient
+end
+
+-- Updates gradient colors based on current theme
+function Library:UpdateGradientColors(GradientInstance)
+    if not GradientInstance or not GradientInstance:IsA("UIGradient") then
+        return
+    end
+
+    -- Create smooth gradient with 5 keypoints for modern look
+    local startColor = Library.Scheme.GradientStart
+    local endColor = Library.Scheme.GradientEnd
+
+    local colorSequence = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, startColor),
+        ColorSequenceKeypoint.new(0.25, startColor:Lerp(endColor, 0.25)),
+        ColorSequenceKeypoint.new(0.5, startColor:Lerp(endColor, 0.5)),
+        ColorSequenceKeypoint.new(0.75, startColor:Lerp(endColor, 0.75)),
+        ColorSequenceKeypoint.new(1, endColor)
+    })
+
+    GradientInstance.Color = colorSequence
+end
+
+-- Updates all registered gradients when theme changes
+function Library:UpdateGradients()
+    for GradientInstance, _ in pairs(Library.GradientRegistry) do
+        if GradientInstance and GradientInstance.Parent then
+            if Library.Scheme.UseGradients then
+                GradientInstance.Enabled = true
+                self:UpdateGradientColors(GradientInstance)
+            else
+                GradientInstance.Enabled = false
+            end
+        else
+            -- Clean up destroyed instances
+            Library.GradientRegistry[GradientInstance] = nil
+        end
+    end
+end
+
+-- Applies gradient to an element (use for interactive elements like sliders, toggles)
+function Library:ApplyGradientToElement(Element, Rotation)
+    -- Check if element already has a gradient
+    local existingGradient = Element:FindFirstChildOfClass("UIGradient")
+
+    if existingGradient then
+        -- Update existing gradient
+        existingGradient.Rotation = Rotation or existingGradient.Rotation
+        self:UpdateGradientColors(existingGradient)
+        Library.GradientRegistry[existingGradient] = true
+        return existingGradient
+    else
+        -- Create new gradient
+        local gradient = self:CreateGradient(Element, Rotation)
+        Library.GradientRegistry[gradient] = true
+        gradient.Enabled = Library.Scheme.UseGradients
+        return gradient
     end
 end
 
@@ -3819,6 +3901,9 @@ do
             Parent = Ball,
         })
 
+        -- Apply gradient to Switch (horizontal gradient for toggle switch)
+        local SwitchGradient = Library:ApplyGradientToElement(Switch, 0)
+
         function Toggle:UpdateColors()
             Toggle:Display()
         end
@@ -4200,6 +4285,9 @@ do
                 Size = true,
             },
         })
+
+        -- Apply gradient to slider fill (horizontal gradient)
+        local FillGradient = Library:ApplyGradientToElement(Fill, 0)
 
         function Slider:UpdateColors()
             if Library.Unloaded then
