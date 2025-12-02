@@ -57,12 +57,18 @@ local SaveManager = {} do
         },
         Slider = {
             Save = function(idx, object)
-                return { type = "Slider", idx = idx, value = tostring(object.Value) }
+                return { type = "Slider", idx = idx, value = object.Value }
             end,
             Load = function(idx, data)
                 local object = SaveManager.Library.Options[idx]
-                if object and object.Value ~= data.value then
-                    object:SetValue(data.value)
+                if object then
+                    local val = data.value
+                    if type(val) == "string" then
+                        val = tonumber(val) or val
+                    end
+                    if object.Value ~= val then
+                        object:SetValue(val)
+                    end
                 end
             end,
         },
@@ -230,7 +236,11 @@ local SaveManager = {} do
             return false, "failed to encode data"
         end
 
-        writefile(fullPath, encoded)
+        local ok, err = pcall(writefile, fullPath, encoded)
+        if not ok then
+            return false, "write file error: " .. tostring(err)
+        end
+
         return true
     end
 

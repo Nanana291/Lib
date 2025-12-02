@@ -49,7 +49,14 @@ do
     ThemeManager.BuiltInThemes = {
         ["Default"] = {
             1,
-            { FontColor = "ffffff", MainColor = "191919", AccentColor = "7d55ff", BackgroundColor = "0f0f0f", OutlineColor = "282828" },
+            {
+                FontColor = "ffffff",
+                MainColor = "191919",
+                -- modern gradient for accents: black -> dark purple
+                AccentColor = { __ObsidianGradient = true, Colors = { "#000000", "#2b004b" }, Rotation = 45 },
+                BackgroundColor = "0f0f0f",
+                OutlineColor = "282828",
+            },
         },
         ["BBot"] = {
             2,
@@ -185,10 +192,58 @@ do
                     self.Library.Options[idx]:SetValue(val)
                 end
             else
-                self.Library.Scheme[idx] = Color3.fromHex(val)
+                -- Support gradient tables for modern themes
+                if typeof(val) == "table" then
+                    -- If it's a gradient-like table serialize/colorize into Color3s for runtime
+                    if val.__ObsidianGradient then
+                        local grad = { __ObsidianGradient = true, Colors = {}, Rotation = val.Rotation or 0 }
+                        for i, c in ipairs(val.Colors or {}) do
+                            if type(c) == "string" then
+                                local ok, col = pcall(function()
+                                    return Color3.fromHex(c)
+                                end)
+                                if ok and col then
+                                    table.insert(grad.Colors, col)
+                                end
+                            elseif typeof(c) == "Color3" then
+                                table.insert(grad.Colors, c)
+                            end
+                        end
 
-                if self.Library.Options[idx] then
-                    self.Library.Options[idx]:SetValueRGB(Color3.fromHex(val))
+                        self.Library.Scheme[idx] = grad
+                    else
+                        -- generic table: try to use first color if present
+                        local ok, first = pcall(function()
+                            return val[1]
+                        end)
+                        if ok and type(first) == "string" then
+                            local ok2, col = pcall(function()
+                                return Color3.fromHex(first)
+                            end)
+                            if ok2 and col then
+                                self.Library.Scheme[idx] = col
+                            end
+                        elseif ok and typeof(first) == "Color3" then
+                            self.Library.Scheme[idx] = first
+                        else
+                            self.Library.Scheme[idx] = val
+                        end
+                    end
+
+                    -- skip attempting to set option widgets for complex values
+                else
+                    -- assume hex/string color value
+                    local ok, col = pcall(function()
+                        return Color3.fromHex(val)
+                    end)
+                    if ok and col then
+                        self.Library.Scheme[idx] = col
+                        if self.Library.Options[idx] and self.Library.Options[idx].SetValueRGB then
+                            pcall(function()
+                                self.Library.Options[idx]:SetValueRGB(col)
+                            end)
+                        end
+                    end
                 end
             end
         end
@@ -302,11 +357,43 @@ do
 
         local theme = {}
         for _, field in ThemeFields do
-            theme[field] = self.Library.Options[field].Value:ToHex()
-        end
-        theme["FontFace"] = self.Library.Options["FontFace"].Value
+            local val = self.Library.Scheme[field]
 
-        writefile(self.Folder .. "/themes/" .. file .. ".json", HttpService:JSONEncode(theme))
+            if type(val) == "table" and val.__ObsidianGradient then
+                -- serialize gradient: store hex strings for colors
+                local cols = {}
+                for _, c in ipairs(val.Colors or {}) do
+                    if typeof(c) == "Color3" then
+                        table.insert(cols, "#" .. c:ToHex())
+                    elseif type(c) == "string" then
+                        table.insert(cols, c)
+                    end
+                end
+
+                theme[field] = { __ObsidianGradient = true, Colors = cols, Rotation = val.Rotation or 0 }
+            elseif typeof(val) == "Color3" then
+                theme[field] = "#" .. val:ToHex()
+            elseif type(val) == "string" then
+                theme[field] = val
+            else
+                -- fallback to options value if present
+                if self.Library.Options[field] and self.Library.Options[field].Value then
+                    local ok, hex = pcall(function()
+                        return "#" .. self.Library.Options[field].Value:ToHex()
+                    end)
+                    if ok then
+                        theme[field] = hex
+                    end
+                end
+            end
+        end
+
+        theme["FontFace"] = (self.Library.Scheme.Font and typeof(self.Library.Scheme.Font) == "userdata") and self.Library.Scheme.Font.Name or (self.Library.Options["FontFace"] and self.Library.Options["FontFace"].Value) or "Code"
+
+        local ok, err = pcall(writefile, self.Folder .. "/themes/" .. file .. ".json", HttpService:JSONEncode(theme))
+        if not ok then
+            self.Library:Notify("Failed to save theme: " .. tostring(err), 3)
+        end
     end
 
     function ThemeManager:Delete(name)
@@ -356,15 +443,25 @@ do
 
     --// GUI \\--
     function ThemeManager:CreateThemeManager(groupbox)
+        local bgDefault = self.Library.Scheme.BackgroundColor
+        local mainDefault = self.Library.Scheme.MainColor
+        local accentDefault = self.Library.Scheme.AccentColor
+        local outlineDefault = self.Library.Scheme.OutlineColor
+        local fontDefault = self.Library.Scheme.FontColor
+
+        if type(accentDefault) == "table" and accentDefault.__ObsidianGradient then
+            accentDefault = accentDefault.Colors and accentDefault.Colors[1] or Color3.fromHex("7d55ff")
+        end
+
         groupbox
             :AddLabel("Background color")
-            :AddColorPicker("BackgroundColor", { Default = self.Library.Scheme.BackgroundColor })
-        groupbox:AddLabel("Main color"):AddColorPicker("MainColor", { Default = self.Library.Scheme.MainColor })
-        groupbox:AddLabel("Accent color"):AddColorPicker("AccentColor", { Default = self.Library.Scheme.AccentColor })
+            :AddColorPicker("BackgroundColor", { Default = bgDefault })
+        groupbox:AddLabel("Main color"):AddColorPicker("MainColor", { Default = mainDefault })
+        groupbox:AddLabel("Accent color"):AddColorPicker("AccentColor", { Default = accentDefault })
         groupbox
             :AddLabel("Outline color")
-            :AddColorPicker("OutlineColor", { Default = self.Library.Scheme.OutlineColor })
-        groupbox:AddLabel("Font color"):AddColorPicker("FontColor", { Default = self.Library.Scheme.FontColor })
+            :AddColorPicker("OutlineColor", { Default = outlineDefault })
+        groupbox:AddLabel("Font color"):AddColorPicker("FontColor", { Default = fontDefault })
         groupbox:AddDropdown("FontFace", {
             Text = "Font Face",
             Default = "Code",
