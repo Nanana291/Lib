@@ -201,10 +201,14 @@ local Library = {
         Dark = Color3.new(0, 0, 0),
         White = Color3.new(1, 1, 1),
 
-        -- Gradient support (for GradientDarkPurple theme and similar)
+        -- Gradient support (for Imp Hub theme and similar)
         UseGradients = false,
         GradientStart = Color3.new(0, 0, 0), -- Black
         GradientEnd = Color3.fromRGB(75, 0, 130), -- Indigo/Dark Purple (#4B0082)
+
+        -- Custom gradient colors for specific elements (brighter for tabs/titles)
+        GradientTabStart = Color3.fromRGB(178, 73, 227), -- Bright Purple (#b249e3)
+        GradientTabEnd = Color3.fromRGB(141, 27, 194), -- Vibrant Purple (#8d1bc2)
     },
 
     Registry = {},
@@ -1049,15 +1053,24 @@ function Library:CreateGradient(Parent, Rotation)
 end
 
 -- Updates gradient colors based on current theme
-function Library:UpdateGradientColors(GradientInstance)
+function Library:UpdateGradientColors(GradientInstance, UseTabGradient)
     if not GradientInstance or not GradientInstance:IsA("UIGradient") then
         return
     end
 
-    -- Create smooth gradient with 5 keypoints for modern look
-    local startColor = Library.Scheme.GradientStart
-    local endColor = Library.Scheme.GradientEnd
+    -- Choose gradient colors based on element type
+    local startColor, endColor
+    if UseTabGradient then
+        -- Brighter gradient for tabs/titles (#b249e3 to #8d1bc2)
+        startColor = Library.Scheme.GradientTabStart or Color3.fromRGB(178, 73, 227)
+        endColor = Library.Scheme.GradientTabEnd or Color3.fromRGB(141, 27, 194)
+    else
+        -- Default dark gradient for elements (#000000 to #4B0082)
+        startColor = Library.Scheme.GradientStart
+        endColor = Library.Scheme.GradientEnd
+    end
 
+    -- Create smooth gradient with 5 keypoints for modern look
     local colorSequence = ColorSequence.new({
         ColorSequenceKeypoint.new(0, startColor),
         ColorSequenceKeypoint.new(0.25, startColor:Lerp(endColor, 0.25)),
@@ -1071,11 +1084,13 @@ end
 
 -- Updates all registered gradients when theme changes
 function Library:UpdateGradients()
-    for GradientInstance, _ in pairs(Library.GradientRegistry) do
+    for GradientInstance, GradientInfo in pairs(Library.GradientRegistry) do
         if GradientInstance and GradientInstance.Parent then
             if Library.Scheme.UseGradients then
                 GradientInstance.Enabled = true
-                self:UpdateGradientColors(GradientInstance)
+                -- Use tab gradient if specified in registry
+                local useTabGradient = type(GradientInfo) == "table" and GradientInfo.IsTabGradient or false
+                self:UpdateGradientColors(GradientInstance, useTabGradient)
             else
                 GradientInstance.Enabled = false
             end
@@ -1107,21 +1122,21 @@ function Library:ApplyGradientToElement(Element, Rotation)
 end
 
 -- Applies gradient to text elements (TextLabel, TextButton) for modern look
-function Library:ApplyGradientToText(TextElement, Rotation)
+function Library:ApplyGradientToText(TextElement, Rotation, UseTabGradient)
     -- For text elements, we apply gradient to TextColor3 using UIGradient
     local existingGradient = TextElement:FindFirstChildOfClass("UIGradient")
 
     if existingGradient then
         existingGradient.Rotation = Rotation or existingGradient.Rotation
-        self:UpdateGradientColors(existingGradient)
-        Library.GradientRegistry[existingGradient] = true
+        self:UpdateGradientColors(existingGradient, UseTabGradient)
+        Library.GradientRegistry[existingGradient] = { IsTabGradient = UseTabGradient or false }
         return existingGradient
     else
         local gradient = Instance.new("UIGradient")
         gradient.Rotation = Rotation or 0
         gradient.Parent = TextElement
-        self:UpdateGradientColors(gradient)
-        Library.GradientRegistry[gradient] = true
+        self:UpdateGradientColors(gradient, UseTabGradient)
+        Library.GradientRegistry[gradient] = { IsTabGradient = UseTabGradient or false }
         gradient.Enabled = Library.Scheme.UseGradients
         return gradient
     end
@@ -6405,21 +6420,21 @@ function Library:CreateWindow(WindowInfo)
         WindowTitle = New("TextButton", {
             BackgroundTransparency = 1,
             Text = WindowInfo.Title,
-            TextSize = 20,
+            TextSize = 27, -- Increased by 35% (from 20 to 27)
             Visible = not LayoutState.IsCompact,
             Parent = TitleHolder,
         })
         if not LayoutState.IsCompact then
             local MaxTextWidth =
                 math.max(0, InitialSidebarWidth - (WindowInfo.Icon and WindowInfo.IconSize.X.Offset + 12 or 12))
-            local TextWidth = Library:GetTextBounds(WindowTitle.Text, Library.Scheme.Font, 20, MaxTextWidth)
+            local TextWidth = Library:GetTextBounds(WindowTitle.Text, Library.Scheme.Font, 27, MaxTextWidth)
             WindowTitle.Size = UDim2.new(0, TextWidth, 1, 0)
         else
             WindowTitle.Size = UDim2.new(0, 0, 1, 0)
         end
 
-        -- Apply gradient to window title (horizontal gradient for modern look)
-        Library:ApplyGradientToText(WindowTitle, 0)
+        -- Apply bright gradient to window title (brighter purple gradient)
+        Library:ApplyGradientToText(WindowTitle, 0, true)
 
         LayoutRefs.WindowTitle = WindowTitle
 
@@ -6815,6 +6830,11 @@ function Library:CreateWindow(WindowInfo)
             Description = select(3, ...)
         end
 
+        -- Convert tab name to uppercase for modern look
+        if Name then
+            Name = string.upper(Name)
+        end
+
         local TabButton: TextButton
         local TabLabel
         local TabIcon
@@ -6847,7 +6867,7 @@ function Library:CreateWindow(WindowInfo)
                 Position = UDim2.fromOffset(30, 0),
                 Size = UDim2.new(1, -30, 1, 0),
                 Text = Name,
-                TextSize = 16,
+                TextSize = 24, -- Increased by 50% (from 16 to 24)
                 TextTransparency = 0.5,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Visible = not LayoutState.IsCompact,
@@ -6855,8 +6875,8 @@ function Library:CreateWindow(WindowInfo)
             })
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
-            -- Apply gradient to tab label (horizontal gradient)
-            Library:ApplyGradientToText(TabLabel, 0)
+            -- Apply bright gradient to tab label (brighter purple gradient)
+            Library:ApplyGradientToText(TabLabel, 0, true)
 
             if Icon then
                 TabIcon = New("ImageLabel", {
@@ -7592,7 +7612,7 @@ function Library:CreateWindow(WindowInfo)
                 Position = UDim2.fromOffset(30, 0),
                 Size = UDim2.new(1, -30, 1, 0),
                 Text = Name,
-                TextSize = 16,
+                TextSize = 24, -- Increased by 50% (from 16 to 24)
                 TextTransparency = 0.5,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Visible = not LayoutState.IsCompact,
@@ -7600,8 +7620,8 @@ function Library:CreateWindow(WindowInfo)
             })
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
-            -- Apply gradient to tab label (horizontal gradient)
-            Library:ApplyGradientToText(TabLabel, 0)
+            -- Apply bright gradient to tab label (brighter purple gradient)
+            Library:ApplyGradientToText(TabLabel, 0, true)
 
             if Icon then
                 TabIcon = New("ImageLabel", {
