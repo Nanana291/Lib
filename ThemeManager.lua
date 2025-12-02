@@ -51,7 +51,7 @@ do
             1,
             { FontColor = "ffffff", MainColor = "191919", AccentColor = "7d55ff", BackgroundColor = "0f0f0f", OutlineColor = "282828" },
         },
-        ["GradientDarkPurple"] = {
+        ["Imp Hub"] = {
             0, -- Priority 0 to make it first/default
             {
                 FontColor = "ffffff",
@@ -61,7 +61,9 @@ do
                 OutlineColor = "282828",
                 UseGradients = "true", -- Enable gradients for this theme
                 GradientStart = "000000", -- Black
-                GradientEnd = "4B0082" -- Indigo/Dark Purple
+                GradientEnd = "4B0082", -- Indigo/Dark Purple
+                GradientTabStart = "b249e3", -- Bright Purple for tabs/titles
+                GradientTabEnd = "8d1bc2" -- Vibrant Purple for tabs/titles
             },
         },
         ["BBot"] = {
@@ -200,8 +202,8 @@ do
             elseif idx == "UseGradients" then
                 -- Handle UseGradients as boolean
                 self.Library.Scheme[idx] = (val == "true" or val == true)
-            elseif idx == "GradientStart" or idx == "GradientEnd" then
-                -- Handle gradient colors
+            elseif idx == "GradientStart" or idx == "GradientEnd" or idx == "GradientTabStart" or idx == "GradientTabEnd" then
+                -- Handle gradient colors (both element and tab gradients)
                 self.Library.Scheme[idx] = Color3.fromHex(val)
             else
                 self.Library.Scheme[idx] = Color3.fromHex(val)
@@ -243,7 +245,7 @@ do
     end
 
     function ThemeManager:LoadDefault()
-        local theme = "GradientDarkPurple" -- Default to GradientDarkPurple theme
+        local theme = "Imp Hub" -- Default to Imp Hub theme
         local content = isfile(self.Folder .. "/themes/default.txt") and readfile(self.Folder .. "/themes/default.txt")
 
         local isDefault = true
@@ -257,7 +259,7 @@ do
         elseif self.BuiltInThemes[self.DefaultTheme] then
             theme = self.DefaultTheme
         elseif not self.BuiltInThemes[theme] then
-            -- Fallback to Default if GradientDarkPurple doesn't exist (shouldn't happen)
+            -- Fallback to Default if Imp Hub doesn't exist (shouldn't happen)
             theme = "Default"
         end
 
@@ -333,6 +335,8 @@ do
             theme["UseGradients"] = "true"
             theme["GradientStart"] = self.Library.Scheme.GradientStart:ToHex()
             theme["GradientEnd"] = self.Library.Scheme.GradientEnd:ToHex()
+            theme["GradientTabStart"] = self.Library.Scheme.GradientTabStart:ToHex()
+            theme["GradientTabEnd"] = self.Library.Scheme.GradientTabEnd:ToHex()
         else
             theme["UseGradients"] = "false"
         end
