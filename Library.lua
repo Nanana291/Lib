@@ -541,6 +541,76 @@ local function GetLighterColor(Color)
     return Color3.fromHSV(H, math.max(0, S - 0.1), math.min(1, V + 0.1))
 end
 
+-- Gradient helpers
+function Library:CreateGradient(Colors, Rotation)
+    -- Colors: array of Color3 or hex strings
+    local parsed = {}
+    for i, c in ipairs(Colors or {}) do
+        if type(c) == "string" then
+            table.insert(parsed, Color3.fromHex(c))
+        else
+            table.insert(parsed, c)
+        end
+    end
+
+    return {
+        __ObsidianGradient = true,
+        Colors = parsed,
+        Rotation = Rotation or 0,
+    }
+end
+
+local function ApplyGradientToInstance(Instance, Property, Gradient)
+    if not Instance or typeof(Gradient) ~= "table" or not Gradient.__ObsidianGradient then
+        return
+    end
+
+    -- For text and image color properties, fall back to first color
+    if Property == "TextColor3" or Property == "ImageColor3" then
+        local c = Gradient.Colors[1]
+        if c then
+            pcall(function()
+                Instance[Property] = c
+            end)
+        end
+        return
+    end
+
+    -- Otherwise create or replace a UIGradient child to produce the gradient
+    pcall(function()
+        -- remove existing Obsidian gradients on this property
+        for _, child in ipairs(Instance:GetChildren()) do
+            if child:IsA("UIGradient") and child.Name:match("^ObsidianGradient_") then
+                child:Destroy()
+            end
+        end
+
+        local uiGrad = Instance.new("UIGradient")
+        uiGrad.Name = "ObsidianGradient_" .. Property
+
+        local keypoints = {}
+        local count = #Gradient.Colors
+        if count == 0 then
+            return
+        end
+
+        for i, col in ipairs(Gradient.Colors) do
+            local offset = 0
+            if count > 1 then
+                offset = (i - 1) / (count - 1)
+            end
+            table.insert(keypoints, ColorSequenceKeypoint.new(offset, col))
+        end
+
+        uiGrad.Color = ColorSequence.new(keypoints)
+        uiGrad.Rotation = Gradient.Rotation or 0
+        uiGrad.Parent = Instance
+
+        -- set a reasonable base color so non-gradient fallbacks look ok
+        Instance[Property] = Gradient.Colors[1]
+    end)
+end
+
 function Library:UpdateKeybindFrame()
     if not Library.KeybindFrame then
         return
@@ -1172,9 +1242,31 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
         elseif ThemeProperties[k] then
             ThemeProperties[k] = nil
         elseif k ~= "Text" and (Library.Scheme[v] or typeof(v) == "function") then
-            -- me when Red in dropdowns break things (temp fix - or perm idk if deivid will do something about this)
+            -- Theme-backed properties (colors, etc). Support gradients via a special table.
             ThemeProperties[k] = v
-            Instance[k] = Library.Scheme[v] or v()
+
+            local themeVal = Library.Scheme[v]
+            if typeof(themeVal) ~= "table" then
+                -- either a Color3 or a function result
+                Instance[k] = themeVal or v()
+            else
+                -- if it's an Obsidian gradient, apply via UIGradient helper
+                if themeVal.__ObsidianGradient then
+                    ApplyGradientToInstance(Instance, k, themeVal)
+                else
+                    -- fallback: try to use the table directly if it provides a Color3-like value
+                    local ok, first = pcall(function()
+                        return themeVal[1]
+                    end)
+                    if ok and typeof(first) == "Color3" then
+                        Instance[k] = first
+                    else
+                        -- last resort: call value if function
+                        Instance[k] = v()
+                    end
+                end
+            end
+
             continue
         end
 
