@@ -6841,15 +6841,25 @@ function Library:CreateWindow(WindowInfo)
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
             if Icon then
-                TabIcon = New("ImageLabel", {
-                    Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
-                    ImageRectOffset = Icon.ImageRectOffset,
-                    ImageRectSize = Icon.ImageRectSize,
-                    ImageTransparency = 0.5,
+                local IconHolder = New("Frame", {
+                    BackgroundColor3 = "AccentColor",
                     Size = UDim2.fromScale(1, 1),
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
+                })
+                New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = IconHolder })
+
+                TabIcon = New("ImageLabel", {
+                    Image = Icon.Url,
+                    BackgroundTransparency = 1,
+                    ImageColor3 = "White",
+                    ImageRectOffset = Icon.ImageRectOffset,
+                    ImageRectSize = Icon.ImageRectSize,
+                    ImageTransparency = 0,
+                    Size = UDim2.fromScale(0.7, 0.7),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Parent = IconHolder,
                 })
             end
 
@@ -7180,14 +7190,24 @@ function Library:CreateWindow(WindowInfo)
 
                 local BoxIcon = Library:GetCustomIcon(Info.IconName)
                 if BoxIcon then
-                    New("ImageLabel", {
-                        Image = BoxIcon.Url,
-                        ImageColor3 = BoxIcon.Custom and "White" or "AccentColor",
-                        ImageRectOffset = BoxIcon.ImageRectOffset,
-                        ImageRectSize = BoxIcon.ImageRectSize,
+                    local BoxIconHolder = New("Frame", {
+                        BackgroundColor3 = "AccentColor",
                         Position = UDim2.fromOffset(6, 6),
                         Size = UDim2.fromOffset(22, 22),
                         Parent = GroupboxHolder,
+                    })
+                    New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = BoxIconHolder })
+
+                    New("ImageLabel", {
+                        Image = BoxIcon.Url,
+                        BackgroundTransparency = 1,
+                        ImageColor3 = "White",
+                        ImageRectOffset = BoxIcon.ImageRectOffset,
+                        ImageRectSize = BoxIcon.ImageRectSize,
+                        Size = UDim2.fromScale(0.7, 0.7),
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Position = UDim2.fromScale(0.5, 0.5),
+                        Parent = BoxIconHolder,
                     })
                 end
 
@@ -7566,15 +7586,25 @@ function Library:CreateWindow(WindowInfo)
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
             if Icon then
-                TabIcon = New("ImageLabel", {
-                    Image = Icon.Url,
-                    ImageColor3 = Icon.Custom and "White" or "AccentColor",
-                    ImageRectOffset = Icon.ImageRectOffset,
-                    ImageRectSize = Icon.ImageRectSize,
-                    ImageTransparency = 0.5,
+                local IconHolder = New("Frame", {
+                    BackgroundColor3 = "AccentColor",
                     Size = UDim2.fromScale(1, 1),
                     SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
+                })
+                New("UICorner", { CornerRadius = UDim.new(0, math.max(0, Library.CornerRadius - 2)), Parent = IconHolder })
+
+                TabIcon = New("ImageLabel", {
+                    Image = Icon.Url,
+                    BackgroundTransparency = 1,
+                    ImageColor3 = "White",
+                    ImageRectOffset = Icon.ImageRectOffset,
+                    ImageRectSize = Icon.ImageRectSize,
+                    ImageTransparency = 0,
+                    Size = UDim2.fromScale(0.7, 0.7),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Parent = IconHolder,
                 })
             end
 
