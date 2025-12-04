@@ -1553,6 +1553,24 @@ function Library:MakeOutline(Frame: GuiObject, Corner: number?, ZIndex: number?)
     return Holder, Outline
 end
 
+function Library:MakeGlow(UI: GuiObject, Color, Radius: number, Corner: number)
+    for i = 1, Radius do
+        local Frame = New("Frame", {
+            Parent = UI,
+            BackgroundColor3 = Color,
+            BackgroundTransparency = 0.8 + (i / Radius) * 0.2,
+            BorderSizePixel = 0,
+            Position = UDim2.fromOffset(-i, -i),
+            Size = UDim2.new(1, i * 2, 1, i * 2),
+            ZIndex = -1,
+        })
+        New("UICorner", {
+            CornerRadius = UDim.new(0, Corner + i),
+            Parent = Frame,
+        })
+    end
+end
+
 function Library:AddDraggableButton(Text: string, Func)
     local Table = {}
 
@@ -4083,8 +4101,18 @@ do
             Label.Text = Text
         end
 
+        Box.Focused:Connect(function()
+            TweenService:Create(Box, Library.TweenInfo, {
+                BorderColor3 = Library.Scheme.AccentColor,
+            }):Play()
+        end)
+
         if Input.Finished then
             Box.FocusLost:Connect(function(Enter)
+                TweenService:Create(Box, Library.TweenInfo, {
+                    BorderColor3 = Library.Scheme.OutlineColor,
+                }):Play()
+
                 if not Enter then
                     return
                 end
@@ -4092,6 +4120,11 @@ do
                 Input:SetValue(Box.Text)
             end)
         else
+            Box.FocusLost:Connect(function()
+                TweenService:Create(Box, Library.TweenInfo, {
+                    BorderColor3 = Library.Scheme.OutlineColor,
+                }):Play()
+            end)
             Box:GetPropertyChangedSignal("Text"):Connect(function()
                 Input:SetValue(Box.Text)
             end)
@@ -6221,6 +6254,7 @@ function Library:CreateWindow(WindowInfo)
             Library:MakeLine(MainFrame, Info)
         end
         Library:MakeOutline(MainFrame, WindowInfo.CornerRadius, 0)
+        Library:MakeGlow(MainFrame, Library.Scheme.AccentColor, 8, WindowInfo.CornerRadius)
 
         if WindowInfo.BackgroundImage then
             New("ImageLabel", {
@@ -6702,24 +6736,33 @@ function Library:CreateWindow(WindowInfo)
         local TabLeft
         local TabRight
 
+        local iconName = Icon
         Icon = Library:GetCustomIcon(Icon)
+        local isIconOnly = Name == ""
+
         do
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 40),
+                Size = isIconOnly and UDim2.new(0, 40, 0, 40) or UDim2.new(1, 0, 0, 40),
                 Text = "",
                 Parent = Tabs,
             })
 
-            local ButtonPadding = New("UIPadding", {
-                PaddingBottom = UDim.new(0, LayoutState.IsCompact and 7 or 11),
-                PaddingLeft = UDim.new(0, LayoutState.IsCompact and 14 or 12),
-                PaddingRight = UDim.new(0, LayoutState.IsCompact and 14 or 12),
-                PaddingTop = UDim.new(0, LayoutState.IsCompact and 7 or 11),
-                Parent = TabButton,
-            })
-            table.insert(LayoutRefs.TabPadding, ButtonPadding)
+            if isIconOnly then
+                Library:AddTooltip(iconName or "Tab", nil, TabButton)
+            end
+
+            if not isIconOnly then
+                local ButtonPadding = New("UIPadding", {
+                    PaddingBottom = UDim.new(0, LayoutState.IsCompact and 7 or 11),
+                    PaddingLeft = UDim.new(0, LayoutState.IsCompact and 14 or 12),
+                    PaddingRight = UDim.new(0, LayoutState.IsCompact and 14 or 12),
+                    PaddingTop = UDim.new(0, LayoutState.IsCompact and 7 or 11),
+                    Parent = TabButton,
+                })
+                table.insert(LayoutRefs.TabPadding, ButtonPadding)
+            end
 
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
@@ -6729,22 +6772,31 @@ function Library:CreateWindow(WindowInfo)
                 TextSize = 16,
                 TextTransparency = 0.5,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                Visible = not LayoutState.IsCompact,
+                Visible = not isIconOnly and not LayoutState.IsCompact,
                 Parent = TabButton,
             })
             table.insert(LayoutRefs.TabLabels, TabLabel)
 
             if Icon then
-                TabIcon = New("ImageLabel", {
+                local iconProps = {
                     Image = Icon.Url,
                     ImageColor3 = Icon.Custom and "White" or "AccentColor",
                     ImageRectOffset = Icon.ImageRectOffset,
                     ImageRectSize = Icon.ImageRectSize,
                     ImageTransparency = 0.5,
-                    Size = UDim2.fromScale(1, 1),
-                    SizeConstraint = Enum.SizeConstraint.RelativeYY,
                     Parent = TabButton,
-                })
+                }
+
+                if isIconOnly then
+                    iconProps.AnchorPoint = Vector2.new(0.5, 0.5)
+                    iconProps.Position = UDim2.fromScale(0.5, 0.5)
+                    iconProps.Size = UDim2.fromOffset(24, 24)
+                else
+                    iconProps.Size = UDim2.fromScale(1, 1)
+                    iconProps.SizeConstraint = Enum.SizeConstraint.RelativeYY
+                end
+
+                TabIcon = New("ImageLabel", iconProps)
             end
 
             --// Tab Container \\--
@@ -7092,6 +7144,7 @@ function Library:CreateWindow(WindowInfo)
                     Text = Info.Name,
                     TextSize = 15,
                     TextXAlignment = Enum.TextXAlignment.Left,
+                    TextColor3 = "AccentColor",
                     Parent = GroupboxHolder,
                 })
                 New("UIPadding", {
