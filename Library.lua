@@ -192,7 +192,7 @@ local Library = {
     Scheme = {
         BackgroundColor = Color3.fromRGB(15, 15, 15),
         MainColor = Color3.fromRGB(25, 25, 25),
-        AccentColor = Color3.fromRGB(125, 85, 255),
+        AccentColor = Color3.fromRGB(127, 62, 201),
         OutlineColor = Color3.fromRGB(40, 40, 40),
         FontColor = Color3.new(1, 1, 1),
         Font = Font.fromEnum(Enum.Font.Code),
@@ -4022,6 +4022,43 @@ do
             Parent = Box,
         })
 
+        local NeonActive = false
+        local NeonTween
+        local LastInteractionTime = 0
+
+        local function ApplyNeon(Active, Instant)
+            if Library.Unloaded then
+                return
+            end
+
+            if NeonTween then
+                StopTween(NeonTween)
+                NeonTween = nil
+            end
+
+            local TargetColor
+            if Active and not Input.Disabled then
+                TargetColor = Library.Scheme.AccentColor
+            else
+                TargetColor = Library.Scheme.FontColor
+            end
+
+            if Instant then
+                Box.TextColor3 = TargetColor
+                return
+            end
+
+            NeonTween = TweenService:Create(Box, Library.TweenInfo, {
+                TextColor3 = TargetColor,
+            })
+            NeonTween:Play()
+        end
+
+        local function SetNeonState(Active, Instant)
+            NeonActive = Active and not Input.Disabled
+            ApplyNeon(NeonActive, Instant)
+        end
+
         function Input:UpdateColors()
             if Library.Unloaded then
                 return
@@ -4029,6 +4066,8 @@ do
 
             Label.TextTransparency = Input.Disabled and 0.8 or 0
             Box.TextTransparency = Input.Disabled and 0.8 or 0
+
+            SetNeonState(NeonActive, true)
         end
 
         function Input:OnChanged(Func)
@@ -4096,6 +4135,48 @@ do
                 Input:SetValue(Box.Text)
             end)
         end
+
+        Box.Focused:Connect(function()
+            if Input.Disabled then
+                return
+            end
+
+            LastInteractionTime = os.clock()
+            SetNeonState(true, false)
+        end)
+
+        Box:GetPropertyChangedSignal("Text"):Connect(function()
+            if Input.Disabled then
+                return
+            end
+
+            LastInteractionTime = os.clock()
+            SetNeonState(true, false)
+        end)
+
+        Box.FocusLost:Connect(function()
+            if Input.Disabled then
+                return
+            end
+
+            local ThisBlurTime = os.clock()
+
+            task.delay(0.35, function()
+                if Library.Unloaded then
+                    return
+                end
+
+                if UserInputService:GetFocusedTextBox() == Box then
+                    return
+                end
+
+                if LastInteractionTime > ThisBlurTime then
+                    return
+                end
+
+                SetNeonState(false, false)
+            end)
+        end)
 
         if typeof(Input.Tooltip) == "string" or typeof(Input.DisabledTooltip) == "string" then
             Input.TooltipTable = Library:AddTooltip(Input.Tooltip, Input.DisabledTooltip, Box)
@@ -6222,6 +6303,15 @@ function Library:CreateWindow(WindowInfo)
         end
         Library:MakeOutline(MainFrame, WindowInfo.CornerRadius, 0)
 
+        New("UIStroke", {
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            Color = "AccentColor",
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Thickness = 2,
+            Transparency = 0.4,
+            Parent = MainFrame,
+        })
+
         if WindowInfo.BackgroundImage then
             New("ImageLabel", {
                 Image = WindowInfo.BackgroundImage,
@@ -6694,6 +6784,18 @@ function Library:CreateWindow(WindowInfo)
             Description = select(3, ...)
         end
 
+        local IsIconOnly = typeof(Name) == "string" and Trim(Name) == "" and Icon ~= nil
+        local TabKey = Name
+
+        if IsIconOnly then
+            local Index = 1
+            local BaseKey = "IconTab"
+            while Library.Tabs[BaseKey .. Index] do
+                Index += 1
+            end
+            TabKey = BaseKey .. Index
+        end
+
         local TabButton: TextButton
         local TabLabel
         local TabIcon
@@ -6704,10 +6806,21 @@ function Library:CreateWindow(WindowInfo)
 
         Icon = Library:GetCustomIcon(Icon)
         do
+            local TabButtonSize
+            if IsIconOnly and WindowInfo.IconSize then
+                local IconSizeX = WindowInfo.IconSize.X.Offset
+                local IconSizeY = WindowInfo.IconSize.Y.Offset
+                local BaseSize = math.max(IconSizeX, IconSizeY, 28)
+                local Padding = LayoutState.IsCompact and 10 or 12
+                TabButtonSize = UDim2.fromOffset(BaseSize + Padding, BaseSize + Padding)
+            else
+                TabButtonSize = UDim2.new(1, 0, 0, 40)
+            end
+
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 40),
+                Size = TabButtonSize,
                 Text = "",
                 Parent = Tabs,
             })
@@ -6729,10 +6842,12 @@ function Library:CreateWindow(WindowInfo)
                 TextSize = 16,
                 TextTransparency = 0.5,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                Visible = not LayoutState.IsCompact,
+                Visible = not LayoutState.IsCompact and not IsIconOnly,
                 Parent = TabButton,
             })
-            table.insert(LayoutRefs.TabLabels, TabLabel)
+            if not IsIconOnly then
+                table.insert(LayoutRefs.TabLabels, TabLabel)
+            end
 
             if Icon then
                 TabIcon = New("ImageLabel", {
@@ -7091,6 +7206,7 @@ function Library:CreateWindow(WindowInfo)
                     Size = UDim2.new(1, 0, 0, 34),
                     Text = Info.Name,
                     TextSize = 15,
+                    TextColor3 = "AccentColor",
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Parent = GroupboxHolder,
                 })
@@ -7349,8 +7465,14 @@ function Library:CreateWindow(WindowInfo)
                     SearchBox.Size = UDim2.fromScale(0.5, 1)
                 end
 
-                CurrentTabLabel.Text = Name
-                CurrentTabDescription.Text = Description
+                local TrimmedName = typeof(Name) == "string" and Trim(Name) or ""
+                if TrimmedName ~= "" then
+                    CurrentTabLabel.Text = Name
+                    CurrentTabDescription.Text = Description
+                else
+                    CurrentTabLabel.Text = Description
+                    CurrentTabDescription.Text = ""
+                end
             end
 
             TabContainer.Visible = true
@@ -7399,7 +7521,7 @@ function Library:CreateWindow(WindowInfo)
         end)
         TabButton.MouseButton1Click:Connect(Tab.Show)
 
-        Library.Tabs[Name] = Tab
+        Library.Tabs[TabKey or Name] = Tab
 
         return Tab
     end
