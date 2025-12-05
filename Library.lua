@@ -1169,13 +1169,13 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
     for k, v in pairs(Table) do
         if k == "DPIExclude" or k == "DPIOffset" then
             continue
-        if k ~= "Text" and (Library.Scheme[v] or typeof(v) == "function") then
+        elseif ThemeProperties[k] then
+            ThemeProperties[k] = nil
+        elseif k ~= "Text" and (Library.Scheme[v] or typeof(v) == "function") then
             -- me when Red in dropdowns break things (temp fix - or perm idk if deivid will do something about this)
             ThemeProperties[k] = v
             Instance[k] = Library.Scheme[v] or v()
             continue
-        elseif ThemeProperties[k] then
-            ThemeProperties[k] = nil
         end
 
         if not DPIExclude[k] then
@@ -4103,12 +4103,14 @@ do
 
         Box.Focused:Connect(function()
             TweenService:Create(Box, Library.TweenInfo, {
+                BorderColor3 = Library.Scheme.AccentColor,
                 TextColor3 = Library.Scheme.AccentColor,
             }):Play()
         end)
 
         Box.FocusLost:Connect(function(Enter)
             TweenService:Create(Box, Library.TweenInfo, {
+                BorderColor3 = Library.Scheme.OutlineColor,
                 TextColor3 = Library.Scheme.FontColor,
             }):Play()
 
@@ -6792,6 +6794,8 @@ function Library:CreateWindow(WindowInfo)
                 }
 
                 if isIconOnly then
+                    iconProps.AnchorPoint = Vector2.new(0.5, 0.5)
+                    iconProps.Position = UDim2.fromScale(0.5, 0.5)
                     iconProps.Size = UDim2.fromOffset(24, 24)
                 else
                     iconProps.Size = UDim2.fromScale(1, 1)
