@@ -4104,27 +4104,22 @@ do
         Box.Focused:Connect(function()
             TweenService:Create(Box, Library.TweenInfo, {
                 BorderColor3 = Library.Scheme.AccentColor,
+                TextColor3 = Library.Scheme.AccentColor,
             }):Play()
         end)
 
-        if Input.Finished then
-            Box.FocusLost:Connect(function(Enter)
-                TweenService:Create(Box, Library.TweenInfo, {
-                    BorderColor3 = Library.Scheme.OutlineColor,
-                }):Play()
+        Box.FocusLost:Connect(function(Enter)
+            TweenService:Create(Box, Library.TweenInfo, {
+                BorderColor3 = Library.Scheme.OutlineColor,
+                TextColor3 = Library.Scheme.FontColor,
+            }):Play()
 
-                if not Enter then
-                    return
-                end
-
+            if Input.Finished and Enter then
                 Input:SetValue(Box.Text)
-            end)
-        else
-            Box.FocusLost:Connect(function()
-                TweenService:Create(Box, Library.TweenInfo, {
-                    BorderColor3 = Library.Scheme.OutlineColor,
-                }):Play()
-            end)
+            end
+        end)
+
+        if not Input.Finished then
             Box:GetPropertyChangedSignal("Text"):Connect(function()
                 Input:SetValue(Box.Text)
             end)
@@ -6744,16 +6739,27 @@ function Library:CreateWindow(WindowInfo)
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = isIconOnly and UDim2.new(0, 40, 0, 40) or UDim2.new(1, 0, 0, 40),
+                Size = UDim2.new(1, 0, 0, 40),
                 Text = "",
                 Parent = Tabs,
             })
 
             if isIconOnly then
+                TabButton.AutomaticSize = Enum.AutomaticSize.X
+                TabButton.Size = UDim2.new(0, 0, 0, 40)
+                New("UIListLayout", {
+                    FillDirection = Enum.FillDirection.Horizontal,
+                    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                    VerticalAlignment = Enum.VerticalAlignment.Center,
+                    Parent = TabButton,
+                })
+                New("UIPadding", {
+                    PaddingLeft = UDim.new(0, 8),
+                    PaddingRight = UDim.new(0, 8),
+                    Parent = TabButton,
+                })
                 Library:AddTooltip(iconName or "Tab", nil, TabButton)
-            end
-
-            if not isIconOnly then
+            else
                 local ButtonPadding = New("UIPadding", {
                     PaddingBottom = UDim.new(0, LayoutState.IsCompact and 7 or 11),
                     PaddingLeft = UDim.new(0, LayoutState.IsCompact and 14 or 12),
