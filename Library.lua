@@ -28,6 +28,8 @@ local Toggles = {}
 local Options = {}
 local Tooltips = {}
 
+local NeonAccentColor = Color3.fromHex("#c359d4")
+
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
 local CustomImageManager = {}
 local CustomImageManagerAssets = {
@@ -3132,6 +3134,7 @@ do
             Data.DoesWrap = Params.DoesWrap or false
             Data.Size = Params.Size or 14
             Data.Visible = Params.Visible or true
+            Data.Color = Params.Color
             Data.Idx = typeof(Second) == "table" and First or nil
         else
             Data.Text = First or ""
@@ -3148,6 +3151,8 @@ do
             Text = Data.Text,
             DoesWrap = Data.DoesWrap,
 
+            Color = Data.Color,
+
             Addons = Addons,
 
             Visible = Data.Visible,
@@ -3163,6 +3168,104 @@ do
             TextXAlignment = Groupbox.IsKeyTab and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left,
             Parent = Container,
         })
+
+        local function ApplyLabelColor(ColorOption)
+            if ColorOption == nil then
+                return
+            end
+
+            local function ClearThemeBinding()
+                local ThemeProps = Library.Registry[TextLabel]
+                if ThemeProps and ThemeProps.TextColor3 ~= nil then
+                    ThemeProps.TextColor3 = nil
+
+                    if GetTableSize(ThemeProps) == 0 then
+                        Library.Registry[TextLabel] = nil
+                    end
+                end
+            end
+
+            if typeof(ColorOption) == "Color3" then
+                ClearThemeBinding()
+                TextLabel.TextColor3 = ColorOption
+                return
+            end
+
+            if typeof(ColorOption) ~= "string" then
+                return
+            end
+
+            local Raw = Trim(ColorOption)
+            if Raw == "" then
+                return
+            end
+
+            local Key = Raw:lower()
+
+            local SchemeKey
+            if Library.Scheme[Raw] then
+                SchemeKey = Raw
+            else
+                local AliasMap = {
+                    accent = "AccentColor",
+                    accentcolor = "AccentColor",
+                    background = "BackgroundColor",
+                    backgroundcolor = "BackgroundColor",
+                    main = "MainColor",
+                    maincolor = "MainColor",
+                    outline = "OutlineColor",
+                    outlinecolor = "OutlineColor",
+                    font = "FontColor",
+                    fontcolor = "FontColor",
+                    red = "Red",
+                    dark = "Dark",
+                    white = "White",
+                }
+
+                SchemeKey = AliasMap[Key]
+            end
+
+            if SchemeKey and Library.Scheme[SchemeKey] then
+                local ThemeProps = Library.Registry[TextLabel] or {}
+
+                TextLabel.TextColor3 = Library.Scheme[SchemeKey]
+                ThemeProps.TextColor3 = SchemeKey
+                Library.Registry[TextLabel] = ThemeProps
+                return
+            end
+
+            local NamedColors = {
+                green = Color3.fromRGB(50, 205, 50),
+                blue = Color3.fromRGB(65, 105, 225),
+                yellow = Color3.fromRGB(255, 255, 0),
+                orange = Color3.fromRGB(255, 165, 0),
+                purple = Color3.fromRGB(180, 80, 255),
+                pink = Color3.fromRGB(255, 105, 180),
+                cyan = Color3.fromRGB(0, 255, 255),
+                magenta = Color3.fromRGB(255, 0, 255),
+                teal = Color3.fromRGB(0, 128, 128),
+                lime = Color3.fromRGB(0, 255, 0),
+                brown = Color3.fromRGB(165, 42, 42),
+                grey = Color3.fromRGB(128, 128, 128),
+                gray = Color3.fromRGB(128, 128, 128),
+                black = Color3.new(0, 0, 0),
+            }
+
+            local NamedColor = NamedColors[Key]
+            if NamedColor then
+                ClearThemeBinding()
+                TextLabel.TextColor3 = NamedColor
+                return
+            end
+
+            local Success, HexColor = pcall(Color3.fromHex, Raw)
+            if Success and typeof(HexColor) == "Color3" then
+                ClearThemeBinding()
+                TextLabel.TextColor3 = HexColor
+            end
+        end
+
+        ApplyLabelColor(Label.Color)
 
         function Label:SetVisible(Visible: boolean)
             Label.Visible = Visible
@@ -3323,6 +3426,52 @@ do
                 Transparency = Button.Disabled and 0.5 or 0,
                 Parent = Base,
             })
+
+            local PressDepth = 0
+
+            local function BeginPress()
+                if Button.Disabled or Button.Locked then
+                    return
+                end
+
+                PressDepth += 1
+                if PressDepth == 1 then
+                    Base._NeonOldTextColor = Base.TextColor3
+                    Base.TextColor3 = NeonAccentColor
+                end
+            end
+
+            local function EndPress()
+                if Button.Disabled or Button.Locked then
+                    return
+                end
+
+                if PressDepth == 0 then
+                    return
+                end
+
+                PressDepth -= 1
+                if PressDepth == 0 and Base._NeonOldTextColor then
+                    Base.TextColor3 = Base._NeonOldTextColor
+                    Base._NeonOldTextColor = nil
+                end
+            end
+
+            Base.InputBegan:Connect(function(Input)
+                if not IsClickInput(Input) then
+                    return
+                end
+
+                BeginPress()
+            end)
+
+            Base.InputEnded:Connect(function(Input)
+                if not IsClickInput(Input) then
+                    return
+                end
+
+                EndPress()
+            end)
 
             return Base, Stroke
         end
@@ -4095,7 +4244,7 @@ do
             Label.Text = Text
         end
 
-        local NeonInputTextColor = Color3.fromHex("c359d4")
+        local NeonInputTextColor = NeonAccentColor
 
         local FocusTween
 
@@ -6466,7 +6615,7 @@ function Library:CreateWindow(WindowInfo)
             New("ImageLabel", {
                 AnchorPoint = Vector2.new(1, 0.5),
                 Image = MoveIcon.Url,
-                ImageColor3 = "OutlineColor",
+                ImageColor3 = NeonAccentColor,
                 ImageRectOffset = MoveIcon.ImageRectOffset,
                 ImageRectSize = MoveIcon.ImageRectSize,
                 Position = UDim2.new(1, -10, 0.5, 0),
@@ -6506,6 +6655,7 @@ function Library:CreateWindow(WindowInfo)
             Text = WindowInfo.Footer,
             TextSize = 14,
             TextTransparency = 0.5,
+            TextColor3 = NeonAccentColor,
             Parent = BottomBar,
         })
 
