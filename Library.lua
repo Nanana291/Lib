@@ -28,7 +28,7 @@ local Toggles = {}
 local Options = {}
 local Tooltips = {}
 
-local NeonAccentColor = Color3.fromHex("c359d4")
+local NeonAccentColor = Color3.fromHex("#c359d4")
 
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
 local CustomImageManager = {}
@@ -3427,13 +3427,18 @@ do
                 Parent = Base,
             })
 
+            local PressDepth = 0
+
             local function BeginPress()
                 if Button.Disabled or Button.Locked then
                     return
                 end
 
-                Button._NeonOldTextColor = Base.TextColor3
-                Base.TextColor3 = NeonAccentColor
+                PressDepth += 1
+                if PressDepth == 1 then
+                    Base._NeonOldTextColor = Base.TextColor3
+                    Base.TextColor3 = NeonAccentColor
+                end
             end
 
             local function EndPress()
@@ -3441,9 +3446,14 @@ do
                     return
                 end
 
-                if Button._NeonOldTextColor then
-                    Base.TextColor3 = Button._NeonOldTextColor
-                    Button._NeonOldTextColor = nil
+                if PressDepth == 0 then
+                    return
+                end
+
+                PressDepth -= 1
+                if PressDepth == 0 and Base._NeonOldTextColor then
+                    Base.TextColor3 = Base._NeonOldTextColor
+                    Base._NeonOldTextColor = nil
                 end
             end
 
