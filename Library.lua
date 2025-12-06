@@ -4069,6 +4069,18 @@ do
             Box.ClearTextOnFocus = not Input.Disabled and Input.ClearTextOnFocus
             Box.TextEditable = not Input.Disabled
             Input:UpdateColors()
+
+            if Disabled then
+                if FocusTween then
+                    StopTween(FocusTween)
+                    FocusTween = nil
+                end
+
+                if not Library.Unloaded and Box and Box.Parent then
+                    Box.TextColor3 = Library.Scheme.FontColor
+                    Box.BorderColor3 = Library.Scheme.OutlineColor
+                end
+            end
         end
 
         function Input:SetVisible(Visible: boolean)
@@ -4085,23 +4097,52 @@ do
 
         local NeonInputTextColor = Color3.fromHex("c359d4")
 
-        Box.Focused:Connect(function()
-            Box.TextColor3 = NeonInputTextColor
-        end)
+        local FocusTween
 
-        Box.FocusLost:Connect(function()
-            Box.TextColor3 = Library.Scheme.FontColor
+        local function SetFocusVisual(IsFocused)
+            if Library.Unloaded or not Box or not Box.Parent then
+                return
+            end
+
+            local TargetTextColor = IsFocused and NeonInputTextColor or Library.Scheme.FontColor
+            local TargetBorderColor = IsFocused and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
+
+            if FocusTween then
+                StopTween(FocusTween)
+                FocusTween = nil
+            end
+
+            FocusTween = TweenService:Create(Box, Library.TweenInfo, {
+                TextColor3 = TargetTextColor,
+                BorderColor3 = TargetBorderColor,
+            })
+
+            FocusTween:Play()
+        end
+
+        -- Desktop + mobile both fire Focused/FocusLost on TextBox, so
+        -- this works for keyboard and touch inputs.
+        Box.Focused:Connect(function()
+            if Input.Disabled then
+                return
+            end
+
+            SetFocusVisual(true)
         end)
 
         if Input.Finished then
-            Box.FocusLost:Connect(function(Enter)
-                if not Enter then
-                    return
-                end
-
+            -- In "Finished" mode, commit the value whenever focus is lost so it
+            -- behaves consistently on desktop and mobile (where users often tap
+            -- outside instead of pressing Enter).
+            Box.FocusLost:Connect(function()
+                SetFocusVisual(false)
                 Input:SetValue(Box.Text)
             end)
         else
+            Box.FocusLost:Connect(function()
+                SetFocusVisual(false)
+            end)
+
             Box:GetPropertyChangedSignal("Text"):Connect(function()
                 Input:SetValue(Box.Text)
             end)
