@@ -4083,6 +4083,16 @@ do
             Label.Text = Text
         end
 
+        local NeonInputTextColor = Color3.fromHex("c359d4")
+
+        Box.Focused:Connect(function()
+            Box.TextColor3 = NeonInputTextColor
+        end)
+
+        Box.FocusLost:Connect(function()
+            Box.TextColor3 = Library.Scheme.FontColor
+        end)
+
         if Input.Finished then
             Box.FocusLost:Connect(function(Enter)
                 if not Enter then
