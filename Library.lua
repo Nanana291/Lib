@@ -28,7 +28,7 @@ local Toggles = {}
 local Options = {}
 local Tooltips = {}
 
-local NeonAccentColor = Color3.fromHex("#c359d4")
+local NeonAccentColor = Color3.fromHex("#ede966")
 
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
 local CustomImageManager = {}
@@ -164,8 +164,15 @@ local Library = {
     Notifications = {},
 
     ToggleKeybind = Enum.KeyCode.RightControl,
-    TweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    NotifyTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    TweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    NotifyTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+
+    -- Enhanced animation TweenInfos
+    HoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    ToggleTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    ScaleTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0),
+    SmoothTweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
+    TabTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 
     Toggled = false,
     Unloaded = false,
@@ -3482,8 +3489,10 @@ do
                     return
                 end
 
-                Button.Tween = TweenService:Create(Button.Base, Library.TweenInfo, {
+                -- Enhanced hover animation with smoother transition
+                Button.Tween = TweenService:Create(Button.Base, Library.HoverTweenInfo, {
                     TextTransparency = 0,
+                    BackgroundColor3 = GetLighterColor(Library.Scheme.MainColor),
                 })
                 Button.Tween:Play()
             end)
@@ -3492,8 +3501,10 @@ do
                     return
                 end
 
-                Button.Tween = TweenService:Create(Button.Base, Library.TweenInfo, {
+                -- Smooth leave animation
+                Button.Tween = TweenService:Create(Button.Base, Library.HoverTweenInfo, {
                     TextTransparency = 0.4,
+                    BackgroundColor3 = Library.Scheme.MainColor,
                 })
                 Button.Tween:Play()
             end)
@@ -3780,15 +3791,26 @@ do
                 return
             end
 
-            TweenService:Create(Label, Library.TweenInfo, {
+            -- Enhanced checkbox animation with smoother transitions
+            TweenService:Create(Label, Library.HoverTweenInfo, {
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
-            TweenService:Create(CheckImage, Library.TweenInfo, {
+            TweenService:Create(CheckImage, Library.ToggleTweenInfo, {
                 ImageTransparency = Toggle.Value and 0 or 1,
             }):Play()
 
-            Checkbox.BackgroundColor3 = Library.Scheme.MainColor
-            Library.Registry[Checkbox].BackgroundColor3 = "MainColor"
+            -- Smooth checkbox background and stroke transition
+            local TargetBgColor = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            local TargetStrokeColor = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
+            TweenService:Create(Checkbox, Library.HoverTweenInfo, {
+                BackgroundColor3 = TargetBgColor,
+            }):Play()
+            TweenService:Create(CheckboxStroke, Library.HoverTweenInfo, {
+                Color = TargetStrokeColor,
+            }):Play()
+
+            Library.Registry[Checkbox].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
+            Library.Registry[CheckboxStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -4001,12 +4023,22 @@ do
                 return
             end
 
-            TweenService:Create(Label, Library.TweenInfo, {
+            TweenService:Create(Label, Library.HoverTweenInfo, {
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
-            TweenService:Create(Ball, Library.TweenInfo, {
+
+            -- Enhanced toggle animation with Back easing for bounce effect
+            TweenService:Create(Ball, Library.ToggleTweenInfo, {
                 AnchorPoint = Vector2.new(Offset, 0),
                 Position = UDim2.fromScale(Offset, 0),
+            }):Play()
+
+            -- Smooth switch background color transition
+            TweenService:Create(Switch, Library.HoverTweenInfo, {
+                BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor,
+            }):Play()
+            TweenService:Create(SwitchStroke, Library.HoverTweenInfo, {
+                Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor,
             }):Play()
 
             Ball.BackgroundColor3 = Library.Scheme.FontColor
@@ -4261,9 +4293,11 @@ do
                 FocusTween = nil
             end
 
-            FocusTween = TweenService:Create(Box, Library.TweenInfo, {
+            -- Enhanced focus animation with smoother transition
+            FocusTween = TweenService:Create(Box, Library.HoverTweenInfo, {
                 TextColor3 = TargetTextColor,
                 BorderColor3 = TargetBorderColor,
+                BackgroundColor3 = IsFocused and GetLighterColor(Library.Scheme.MainColor) or Library.Scheme.MainColor,
             })
 
             FocusTween:Play()
@@ -4690,8 +4724,16 @@ do
             2,
             function(Active: boolean)
                 Display.TextTransparency = (Active and SearchBox) and 1 or 0
-                ArrowImage.ImageTransparency = Active and 0 or 0.5
-                ArrowImage.Rotation = Active and 180 or 0
+
+                -- Enhanced dropdown animation with smooth arrow rotation
+                TweenService:Create(ArrowImage, Library.HoverTweenInfo, {
+                    ImageTransparency = Active and 0 or 0.5,
+                    Rotation = Active and 180 or 0,
+                }):Play()
+                TweenService:Create(Display, Library.HoverTweenInfo, {
+                    BorderColor3 = Active and Library.Scheme.AccentColor or Library.Scheme.OutlineColor,
+                }):Play()
+
                 if SearchBox then
                     SearchBox.Text = ""
                     SearchBox.Visible = Active
@@ -7516,12 +7558,16 @@ function Library:CreateWindow(WindowInfo)
                 return
             end
 
-            TweenService:Create(TabLabel, Library.TweenInfo, {
-                TextTransparency = Hovering and 0.25 or 0.5,
+            -- Smoother hover animation for tabs
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
+                TextTransparency = Hovering and 0.2 or 0.5,
+            }):Play()
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
+                BackgroundTransparency = Hovering and 0.7 or 1,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
-                    ImageTransparency = Hovering and 0.25 or 0.5,
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
+                    ImageTransparency = Hovering and 0.2 or 0.5,
                 }):Play()
             end
         end
@@ -7531,14 +7577,15 @@ function Library:CreateWindow(WindowInfo)
                 Library.ActiveTab:Hide()
             end
 
-            TweenService:Create(TabButton, Library.TweenInfo, {
+            -- Enhanced tab show animation
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
                 BackgroundTransparency = 0,
             }):Play()
-            TweenService:Create(TabLabel, Library.TweenInfo, {
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
                 TextTransparency = 0,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
                     ImageTransparency = 0,
                 }):Play()
             end
@@ -7565,14 +7612,15 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:Hide()
-            TweenService:Create(TabButton, Library.TweenInfo, {
+            -- Enhanced tab hide animation
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
                 BackgroundTransparency = 1,
             }):Play()
-            TweenService:Create(TabLabel, Library.TweenInfo, {
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
                 TextTransparency = 0.5,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
                     ImageTransparency = 0.5,
                 }):Play()
             end
@@ -7766,12 +7814,16 @@ function Library:CreateWindow(WindowInfo)
                 return
             end
 
-            TweenService:Create(TabLabel, Library.TweenInfo, {
-                TextTransparency = Hovering and 0.25 or 0.5,
+            -- Smoother hover animation for tabs
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
+                TextTransparency = Hovering and 0.2 or 0.5,
+            }):Play()
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
+                BackgroundTransparency = Hovering and 0.7 or 1,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
-                    ImageTransparency = Hovering and 0.25 or 0.5,
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
+                    ImageTransparency = Hovering and 0.2 or 0.5,
                 }):Play()
             end
         end
@@ -7781,14 +7833,15 @@ function Library:CreateWindow(WindowInfo)
                 Library.ActiveTab:Hide()
             end
 
-            TweenService:Create(TabButton, Library.TweenInfo, {
+            -- Enhanced tab show animation
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
                 BackgroundTransparency = 0,
             }):Play()
-            TweenService:Create(TabLabel, Library.TweenInfo, {
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
                 TextTransparency = 0,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
                     ImageTransparency = 0,
                 }):Play()
             end
@@ -7815,14 +7868,15 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:Hide()
-            TweenService:Create(TabButton, Library.TweenInfo, {
+            -- Enhanced tab hide animation
+            TweenService:Create(TabButton, Library.TabTweenInfo, {
                 BackgroundTransparency = 1,
             }):Play()
-            TweenService:Create(TabLabel, Library.TweenInfo, {
+            TweenService:Create(TabLabel, Library.TabTweenInfo, {
                 TextTransparency = 0.5,
             }):Play()
             if TabIcon then
-                TweenService:Create(TabIcon, Library.TweenInfo, {
+                TweenService:Create(TabIcon, Library.TabTweenInfo, {
                     ImageTransparency = 0.5,
                 }):Play()
             end
@@ -7865,7 +7919,23 @@ function Library:CreateWindow(WindowInfo)
             Library.Toggled = not Library.Toggled
         end
 
-        MainFrame.Visible = Library.Toggled
+        -- Enhanced window show/hide animation
+        if Library.Toggled then
+            MainFrame.Visible = true
+            MainFrame.BackgroundTransparency = 1
+            TweenService:Create(MainFrame, Library.SmoothTweenInfo, {
+                BackgroundTransparency = 0,
+            }):Play()
+        else
+            TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                BackgroundTransparency = 1,
+            }):Play()
+            task.delay(0.2, function()
+                if not Library.Toggled then
+                    MainFrame.Visible = false
+                end
+            end)
+        end
 
         if WindowInfo.UnlockMouseWhileOpen then
             ModalElement.Modal = Library.Toggled

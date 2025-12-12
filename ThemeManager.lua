@@ -52,7 +52,7 @@ do
             {
                 FontColor = "ffffff",
                 MainColor = "1a1a1a",
-                AccentColor = "c359d4",
+                AccentColor = "ede966",
                 BackgroundColor = "111111",
                 OutlineColor = "292929",
             },
